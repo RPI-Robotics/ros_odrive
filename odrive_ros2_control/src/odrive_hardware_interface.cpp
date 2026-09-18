@@ -8,11 +8,11 @@
 #include "rclcpp/rclcpp.hpp"
 #include "socket_can.hpp"
 
-#define radius 1.0 // Meters
-#define gear_ratio 1.0
+#define radius 0.254 // Meters
+#define gear_ratio 25.0
 
 namespace odrive_ros2_control {
-
+    
 class Axis;
 
 class ODriveHardwareInterface final : public hardware_interface::SystemInterface {
