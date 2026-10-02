@@ -8,8 +8,11 @@
 #include "rclcpp/rclcpp.hpp"
 #include "socket_can.hpp"
 
-namespace odrive_ros2_control {
+#define radius 0.254 // Meters
+#define gear_ratio 25.0
 
+namespace odrive_ros2_control {
+    
 class Axis;
 
 class ODriveHardwareInterface final : public hardware_interface::SystemInterface {
@@ -272,7 +275,7 @@ return_type ODriveHardwareInterface::write(const rclcpp::Time&, const rclcpp::Du
             axis.send(msg);
         } else if (axis.vel_input_enabled_) {
             Set_Input_Vel_msg_t msg;
-            msg.Input_Vel = axis.vel_setpoint_ / (2 * M_PI);
+            msg.Input_Vel = (axis.vel_setpoint_ / (2 * M_PI * radius)) * gear_ratio; // Meters to Motor Rotations
             msg.Input_Torque_FF = axis.torque_input_enabled_ ? axis.torque_setpoint_ : 0.0f;
             axis.send(msg);
         } else if (axis.torque_input_enabled_) {
@@ -309,7 +312,7 @@ void ODriveHardwareInterface::set_axis_command_mode(const Axis& axis) {
     Set_Axis_State_msg_t state_msg;
 
     clear_error_msg.Identify = 0;
-    control_msg.Input_Mode = INPUT_MODE_PASSTHROUGH;
+    control_msg.Input_Mode = INPUT_MODE_VEL_RAMP;
     state_msg.Axis_Requested_State = AXIS_STATE_CLOSED_LOOP_CONTROL;
 
     if (axis.pos_input_enabled_) {
