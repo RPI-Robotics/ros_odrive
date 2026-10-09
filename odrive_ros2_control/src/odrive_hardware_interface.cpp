@@ -111,7 +111,9 @@ using hardware_interface::CallbackReturn;
 using hardware_interface::return_type;
 
 CallbackReturn ODriveHardwareInterface::on_init(const hardware_interface::HardwareInfo& info) {
-    if (hardware_interface::SystemInterface::on_init(info) != CallbackReturn::SUCCESS) {
+    hardware_interface::HardwareComponentInterfaceParams interface_params;
+    interface_params.hardware_info = info;
+    if (hardware_interface::SystemInterface::on_init(interface_params) != CallbackReturn::SUCCESS) {
         return CallbackReturn::ERROR;
     }
 
