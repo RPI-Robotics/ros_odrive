@@ -114,15 +114,9 @@ struct Estop_msg_t final {
     }
 #endif
     
-    // function was originally void and empty, changed to remove unused parameter warning
-    uint8_t* encode_buf(uint8_t* buf) const {
-        return buf;
-    }
+    void encode_buf(uint8_t*) const {}
 
-    // function was originally void and empty, changed to remove unused parameter warning
-    const uint8_t* decode_buf(const uint8_t* buf) const {
-        return buf;
-    }
+    void decode_buf(const uint8_t*) const {}
 
     static const uint8_t cmd_id = 0x002;
     static const uint8_t msg_length = 0;
@@ -873,15 +867,9 @@ struct Enter_DFU_Mode_msg_t final {
     }
 #endif
 
-    // function was originally void and empty, changed to remove unused parameter warning
-    uint8_t* encode_buf(uint8_t* buf) const {
-        return buf;
-    }
+    void encode_buf(uint8_t*) const {}
 
-    // function was originally void and empty, changed to remove unused parameter warning
-    const uint8_t* decode_buf(const uint8_t* buf) const {
-        return buf;
-    }
+    void decode_buf(const uint8_t*) const {}
 
     static const uint8_t cmd_id = 0x01F;
     static const uint8_t msg_length = 0;
