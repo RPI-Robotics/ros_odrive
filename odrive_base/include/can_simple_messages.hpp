@@ -113,12 +113,10 @@ struct Estop_msg_t final {
         decode_buf(can_msg_get_payload(msg).data());
     }
 #endif
+    
+    void encode_buf(uint8_t*) const {}
 
-    void encode_buf(uint8_t* buf) const {
-    }
-
-    void decode_buf(const uint8_t* buf) {
-    }
+    void decode_buf(const uint8_t*) const {}
 
     static const uint8_t cmd_id = 0x002;
     static const uint8_t msg_length = 0;
@@ -869,11 +867,9 @@ struct Enter_DFU_Mode_msg_t final {
     }
 #endif
 
-    void encode_buf(uint8_t* buf) const {
-    }
+    void encode_buf(uint8_t*) const {}
 
-    void decode_buf(const uint8_t* buf) {
-    }
+    void decode_buf(const uint8_t*) const {}
 
     static const uint8_t cmd_id = 0x01F;
     static const uint8_t msg_length = 0;
