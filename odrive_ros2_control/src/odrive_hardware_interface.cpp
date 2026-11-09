@@ -275,7 +275,9 @@ return_type ODriveHardwareInterface::write(const rclcpp::Time&, const rclcpp::Du
             axis.send(msg);
         } else if (axis.vel_input_enabled_) {
             Set_Input_Vel_msg_t msg;
-            msg.Input_Vel = (axis.vel_setpoint_ / (2 * M_PI * radius)) * gear_ratio; // Meters to Motor Rotations
+            // Ros2 control already converts the m/s we send it to wheel radians/second since we pass in the wheel size
+            // So all we actually need to do is convert wheel radians/second -> motor rotations/second
+            msg.Input_Vel = (axis.vel_setpoint_ / (2 * M_PI)) * gear_ratio; // Wheel rad/s to Motor Rotations/s
             msg.Input_Torque_FF = axis.torque_input_enabled_ ? axis.torque_setpoint_ : 0.0f;
             axis.send(msg);
         } else if (axis.torque_input_enabled_) {
@@ -351,8 +353,9 @@ void Axis::on_can_msg(const rclcpp::Time&, const can_frame& frame) {
     switch (cmd) {
         case Get_Encoder_Estimates_msg_t::cmd_id: {
             if (Get_Encoder_Estimates_msg_t msg; try_decode(msg)) {
-                pos_estimate_ = msg.Pos_Estimate * (2 * M_PI);
-                vel_estimate_ = msg.Vel_Estimate * (2 * M_PI);
+                // Account for gearbox in reads as well, ros2_control itself will convert it to m/s
+                pos_estimate_ = (msg.Pos_Estimate / gear_ratio) * (2 * M_PI); 
+                vel_estimate_ = (msg.Vel_Estimate / gear_ratio) * (2 * M_PI);
             }
         } break;
         case Get_Torques_msg_t::cmd_id: {
