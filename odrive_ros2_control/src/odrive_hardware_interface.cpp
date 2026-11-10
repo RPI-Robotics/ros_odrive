@@ -8,8 +8,10 @@
 #include "rclcpp/rclcpp.hpp"
 #include "socket_can.hpp"
 
+#include <string>
+
 #define radius 0.254 // Meters
-#define gear_ratio 25.0
+double gear_ratio = 1.0;
 
 namespace odrive_ros2_control {
     
@@ -116,6 +118,9 @@ CallbackReturn ODriveHardwareInterface::on_init(const hardware_interface::Hardwa
     }
 
     can_intf_name_ = info_.hardware_parameters["can"];
+    if (info_.hardware_parameters.find("gear_ratio") != info_.hardware_parameters.end()) {
+        gear_ratio = std::stod(info_.hardware_parameters["gear_ratio"]);
+    }
 
     for (auto& joint : info_.joints) {
         axes_.emplace_back(&can_intf_, std::stoi(joint.parameters.at("node_id")));
