@@ -10,9 +10,6 @@
 
 #include <string>
 
-#define radius 0.254 // Meters
-double gear_ratio = 1.0;
-
 namespace odrive_ros2_control {
     
 class Axis;
@@ -52,7 +49,8 @@ private:
 };
 
 struct Axis {
-    Axis(SocketCanIntf* can_intf, uint32_t node_id) : can_intf_(can_intf), node_id_(node_id) {}
+    Axis(SocketCanIntf* can_intf, uint32_t node_id) : can_intf_(can_intf), node_id_(node_id), gear_ratio(1.0) {}
+    Axis(SocketCanIntf* can_intf, uint32_t node_id, double ratio) : can_intf_(can_intf), node_id_(node_id), gear_ratio(ratio) {}
 
     void on_can_msg(const rclcpp::Time& timestamp, const can_frame& frame);
 
@@ -60,6 +58,8 @@ struct Axis {
 
     SocketCanIntf* can_intf_;
     uint32_t node_id_;
+
+    double gear_ratio;
 
     // Commands (ros2_control => ODrives)
     double pos_setpoint_ = 0.0f; // [rad]
@@ -118,12 +118,9 @@ CallbackReturn ODriveHardwareInterface::on_init(const hardware_interface::Hardwa
     }
 
     can_intf_name_ = info_.hardware_parameters["can"];
-    if (info_.hardware_parameters.find("gear_ratio") != info_.hardware_parameters.end()) {
-        gear_ratio = std::stod(info_.hardware_parameters["gear_ratio"]);
-    }
 
     for (auto& joint : info_.joints) {
-        axes_.emplace_back(&can_intf_, std::stoi(joint.parameters.at("node_id")));
+        axes_.emplace_back(&can_intf_, std::stoi(joint.parameters.at("node_id")), info_.hardware_parameters.contains("gear_ratio") ? std::stod(info_.hardware_parameters["gear_ratio"]) : 1.0);
     }
 
     return CallbackReturn::SUCCESS;
@@ -282,7 +279,7 @@ return_type ODriveHardwareInterface::write(const rclcpp::Time&, const rclcpp::Du
             Set_Input_Vel_msg_t msg;
             // Ros2 control already converts the m/s we send it to wheel radians/second since we pass in the wheel size
             // So all we actually need to do is convert wheel radians/second -> motor rotations/second
-            msg.Input_Vel = (axis.vel_setpoint_ / (2 * M_PI)) * gear_ratio; // Wheel rad/s to Motor Rotations/s
+            msg.Input_Vel = (axis.vel_setpoint_ / (2 * M_PI)) * axis.gear_ratio; // Wheel rad/s to Motor Rotations/s
             msg.Input_Torque_FF = axis.torque_input_enabled_ ? axis.torque_setpoint_ : 0.0f;
             axis.send(msg);
         } else if (axis.torque_input_enabled_) {
