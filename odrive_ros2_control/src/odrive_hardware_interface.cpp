@@ -59,6 +59,7 @@ struct Axis {
     SocketCanIntf* can_intf_;
     uint32_t node_id_;
 
+    // Default value is 1.0, it is the natural relationship between a motor and endpoint with no extra gearing
     double gear_ratio;
 
     // Commands (ros2_control => ODrives)
