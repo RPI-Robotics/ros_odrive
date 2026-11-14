@@ -8,8 +8,7 @@
 #include "rclcpp/rclcpp.hpp"
 #include "socket_can.hpp"
 
-#define radius 0.254 // Meters
-#define gear_ratio 25.0
+#include <string>
 
 namespace odrive_ros2_control {
     
@@ -50,7 +49,9 @@ private:
 };
 
 struct Axis {
-    Axis(SocketCanIntf* can_intf, uint32_t node_id) : can_intf_(can_intf), node_id_(node_id) {}
+    Axis(SocketCanIntf* can_intf, uint32_t node_id) : can_intf_(can_intf), node_id_(node_id), gear_ratio(1.0), is_vel_ramped(false) {}
+    Axis(SocketCanIntf* can_intf, uint32_t node_id, double ratio) : can_intf_(can_intf), node_id_(node_id), gear_ratio(ratio), is_vel_ramped(false) {}
+    Axis(SocketCanIntf* can_intf, uint32_t node_id, double ratio, bool set_vel_ramp) : can_intf_(can_intf), node_id_(node_id), gear_ratio(ratio), is_vel_ramped(set_vel_ramp) {}
 
     void on_can_msg(const rclcpp::Time& timestamp, const can_frame& frame);
 
@@ -58,6 +59,12 @@ struct Axis {
 
     SocketCanIntf* can_intf_;
     uint32_t node_id_;
+
+    // Default value is 1.0, it is the natural relationship between a motor and endpoint with no extra gearing
+    double gear_ratio;
+
+    // Default is false
+    bool is_vel_ramped;
 
     // Commands (ros2_control => ODrives)
     double pos_setpoint_ = 0.0f; // [rad]
@@ -118,7 +125,9 @@ CallbackReturn ODriveHardwareInterface::on_init(const hardware_interface::Hardwa
     can_intf_name_ = info_.hardware_parameters["can"];
 
     for (auto& joint : info_.joints) {
-        axes_.emplace_back(&can_intf_, std::stoi(joint.parameters.at("node_id")));
+        axes_.emplace_back(&can_intf_, std::stoi(joint.parameters.at("node_id")), 
+            info_.hardware_parameters.contains("gear_ratio") ? std::stod(info_.hardware_parameters["gear_ratio"]) : 1.0,
+            info_.hardware_parameters.contains("is_vel_ramped" ? std::stob(info_.hardware_parameters["is_vel_ramped"] : false)));
     }
 
     return CallbackReturn::SUCCESS;
@@ -275,7 +284,9 @@ return_type ODriveHardwareInterface::write(const rclcpp::Time&, const rclcpp::Du
             axis.send(msg);
         } else if (axis.vel_input_enabled_) {
             Set_Input_Vel_msg_t msg;
-            msg.Input_Vel = (axis.vel_setpoint_ / (2 * M_PI * radius)) * gear_ratio; // Meters to Motor Rotations
+            // Ros2 control already converts the m/s we send it to wheel radians/second since we pass in the wheel size
+            // So all we actually need to do is convert wheel radians/second -> motor rotations/second
+            msg.Input_Vel = (axis.vel_setpoint_ / (2 * M_PI)) * axis.gear_ratio; // Wheel rad/s to Motor Rotations/s
             msg.Input_Torque_FF = axis.torque_input_enabled_ ? axis.torque_setpoint_ : 0.0f;
             axis.send(msg);
         } else if (axis.torque_input_enabled_) {
@@ -312,7 +323,7 @@ void ODriveHardwareInterface::set_axis_command_mode(const Axis& axis) {
     Set_Axis_State_msg_t state_msg;
 
     clear_error_msg.Identify = 0;
-    control_msg.Input_Mode = INPUT_MODE_VEL_RAMP;
+    control_msg.Input_Mode = INPUT_MODE_PASSTHROUGH;
     state_msg.Axis_Requested_State = AXIS_STATE_CLOSED_LOOP_CONTROL;
 
     if (axis.pos_input_enabled_) {
@@ -320,6 +331,7 @@ void ODriveHardwareInterface::set_axis_command_mode(const Axis& axis) {
         control_msg.Control_Mode = CONTROL_MODE_POSITION_CONTROL;
     } else if (axis.vel_input_enabled_) {
         RCLCPP_INFO(rclcpp::get_logger("ODriveHardwareInterface"), "Setting to velocity control.");
+        control_msg.Input_Mode = axis.is_vel_ramped ? INPUT_MODE_VEL_RAMP : INPUT_MODE_PASSTHROUGH;
         control_msg.Control_Mode = CONTROL_MODE_VELOCITY_CONTROL;
     } else if (axis.torque_input_enabled_) {
         RCLCPP_INFO(rclcpp::get_logger("ODriveHardwareInterface"), "Setting to torque control.");
@@ -351,8 +363,9 @@ void Axis::on_can_msg(const rclcpp::Time&, const can_frame& frame) {
     switch (cmd) {
         case Get_Encoder_Estimates_msg_t::cmd_id: {
             if (Get_Encoder_Estimates_msg_t msg; try_decode(msg)) {
-                pos_estimate_ = msg.Pos_Estimate * (2 * M_PI);
-                vel_estimate_ = msg.Vel_Estimate * (2 * M_PI);
+                // Account for gearbox in reads as well, ros2_control itself will convert it to m/s
+                pos_estimate_ = (msg.Pos_Estimate / gear_ratio) * (2 * M_PI); 
+                vel_estimate_ = (msg.Vel_Estimate / gear_ratio) * (2 * M_PI);
             }
         } break;
         case Get_Torques_msg_t::cmd_id: {
