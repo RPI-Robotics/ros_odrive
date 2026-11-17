@@ -117,16 +117,16 @@ using namespace odrive_ros2_control;
 using hardware_interface::CallbackReturn;
 using hardware_interface::return_type;
 
+// checks if the velocity command_interface and param exist in a give joint
+// if they do exist it returns if the param is true or false
 bool check_vel_param(auto& joint, const std::string& param) {
     for (size_t i = 0; i < joint.command_interfaces.size(); i++) {
         if (joint.command_interfaces[i].name == "velocity") {
-            if (joint.command_interfaces[i].parameters.contains(param)) {
-                return joint.command_interfaces[i].parameters[param] == "true";
-            }
-            return false;
+            return joint.command_interfaces[i].parameters.contains(param) 
+                && joint.command_interfaces[i].parameters[param] == "true";
         }
-        return false;
     }
+    return false;
 }
 
 CallbackReturn ODriveHardwareInterface::on_init(const hardware_interface::HardwareInfo& info) {
