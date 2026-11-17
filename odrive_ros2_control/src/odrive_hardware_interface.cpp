@@ -121,7 +121,7 @@ bool check_vel_param(auto& joint, const std::string& param) {
     for (size_t i = 0; i < joint.command_interfaces.size(); i++) {
         if (joint.command_interfaces[i].name == "velocity") {
             if (joint.command_interfaces[i].parameters.contains(param)) {
-                return joint.command_interfaces[i].parameters[param] == "true" ? true : false;
+                return joint.command_interfaces[i].parameters[param] == "true";
             }
             return false;
         }
