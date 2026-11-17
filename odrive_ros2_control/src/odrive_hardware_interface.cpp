@@ -117,6 +117,18 @@ using namespace odrive_ros2_control;
 using hardware_interface::CallbackReturn;
 using hardware_interface::return_type;
 
+bool check_vel_param(auto& joint, std::string param) {
+    for (size_t i = 0; i < joint.command_interfaces.size(); i++) {
+        if (joint.command_interfaces[i].name == "velocity") {
+            if (joint.command_interfaces[i].parameters.contains(param)) {
+                return joint.command_interfaces[i].parameters[param] == "true" ? true : false;
+            }
+            return false;
+        }
+        return false;
+    }
+}
+
 CallbackReturn ODriveHardwareInterface::on_init(const hardware_interface::HardwareInfo& info) {
     if (hardware_interface::SystemInterface::on_init(info) != CallbackReturn::SUCCESS) {
         return CallbackReturn::ERROR;
@@ -126,8 +138,8 @@ CallbackReturn ODriveHardwareInterface::on_init(const hardware_interface::Hardwa
 
     for (auto& joint : info_.joints) {
         axes_.emplace_back(&can_intf_, std::stoi(joint.parameters.at("node_id")), 
-            info_.hardware_parameters.contains("gear_ratio") ? std::stod(info_.hardware_parameters["gear_ratio"]) : 1.0,
-            info_.hardware_parameters.contains("is_vel_ramped" ? std::stob(info_.hardware_parameters["is_vel_ramped"] : false)));
+            joint.parameters.contains("gear_ratio") ? std::stod(joint.parameters.at("gear_ratio")) : 1.0,
+            check_vel_param(joint, "ramped"));
     }
 
     return CallbackReturn::SUCCESS;
